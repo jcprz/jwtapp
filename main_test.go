@@ -111,14 +111,14 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 	}
 }
 
-func createUser(count int) {
-	if count < 1 {
-		count = 1
-	}
-	for i := 0; i < count; i++ {
-		a.DB.QueryRow("insert into users (email, password) values ($1, $2);", "test@email.com", "123456")
-	}
-}
+// func createUser(count int) {
+// 	if count < 1 {
+// 		count = 1
+// 	}
+// 	for i := 0; i < count; i++ {
+// 		a.DB.QueryRow("insert into users (email, password) values ($1, $2);", "test@email.com", "123456")
+// 	}
+// }
 
 func clearTable() {
 	a.DB.Exec("DELETE FROM users")
