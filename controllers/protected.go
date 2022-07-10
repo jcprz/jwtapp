@@ -1,8 +1,9 @@
 package controllers
 
 import (
-	"jwt-app/utils"
 	"net/http"
+
+	"github.com/jcprz/jwtapp/utils"
 )
 
 type Controller struct{}

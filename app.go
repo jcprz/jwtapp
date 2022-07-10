@@ -2,10 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"jwt-app/controllers"
-	"jwt-app/database"
 	"log"
 	"net/http"
+
+	"github.com/jcprz/jwtapp/controllers"
+	"github.com/jcprz/jwtapp/database"
 
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
@@ -20,9 +21,9 @@ type App struct {
 func (a *App) Initialize() {
 	a.DB = database.ConnectDB()
 	a.RDS = database.ConnectRedis()
-	a.Router = mux.NewRouter()
 	database.EnsureTableExists(a.DB)
 
+	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 }
 

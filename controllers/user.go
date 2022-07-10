@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"jwt-app/models"
-	userRepository "jwt-app/repository/user"
-	"jwt-app/utils"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/jcprz/jwtapp/models"
+	userRepository "github.com/jcprz/jwtapp/repository/user"
+	"github.com/jcprz/jwtapp/utils"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis"

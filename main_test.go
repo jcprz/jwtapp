@@ -3,12 +3,14 @@ package main_test
 import (
 	"bytes"
 	"encoding/json"
-	"jwt-app/database"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	main "github.com/jcprz/jwtapp"
+	"github.com/jcprz/jwtapp/database"
 )
 
 var a main.App
@@ -75,24 +77,24 @@ func TestLoginUserAPI(t *testing.T) {
 	}
 }
 
-func TestDeleteUserAPI(t *testing.T) {
-	clearTable()
-	createUser(1)
+// func TestDeleteUserAPI(t *testing.T) {
+// 	clearTable()
+// 	createUser(1)
 
-	req, _ := http.NewRequest("GET", "/login", nil)
-	response := executeRequest(req)
-	checkResponseCode(t, http.StatusOK, response.Code)
+// 	req, _ := http.NewRequest("GET", "/login", nil)
+// 	response := executeRequest(req)
+// 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("DELETE", "/delete", nil)
-	response = executeRequest(req)
+// 	req, _ = http.NewRequest("DELETE", "/delete", nil)
+// 	response = executeRequest(req)
 
-	checkResponseCode(t, http.StatusOK, response.Code)
+// 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("GET", "/delete", nil)
-	response = executeRequest(req)
-	checkResponseCode(t, http.StatusNotFound, response.Code)
+// 	req, _ = http.NewRequest("GET", "/delete", nil)
+// 	response = executeRequest(req)
+// 	checkResponseCode(t, http.StatusNotFound, response.Code)
 
-}
+// }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	log.Printf("Request URI: %s | Request Body: %s | Request Header: %s", req.URL, req.Body, req.Header)

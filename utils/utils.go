@@ -2,12 +2,12 @@ package utils
 
 import (
 	"encoding/json"
-	"jwt-app/models"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/jcprz/jwtapp/models"
 	"golang.org/x/crypto/bcrypt"
 )
 

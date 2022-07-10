@@ -2,10 +2,10 @@ package userRepository
 
 import (
 	"database/sql"
-	"jwt-app/models"
 	"log"
 
 	"github.com/go-redis/redis"
+	"github.com/jcprz/jwtapp/models"
 )
 
 type UserRepository struct{}
