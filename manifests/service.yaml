@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jwtapp-cluster-ip-svc
+  name: jwtapp-cluster-ip=svc
+  namespace: dev
+spec:
+  ports:
+  - port: 9999
+    protocol: TCP
+    targetPort: 9999
+  selector:
+    app: jwt-app
+  type: ClusterIP

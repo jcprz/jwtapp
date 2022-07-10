@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwtapp-scrts
+  namespace: dev
+type: Opaque
+data:
+    POSTGRES_PASSWORD: 'mJ1IUyYw5_imo_kR-wzp1ua8yaHLP_aR'
+    SECRET: 'secret'
+  # Example:
+  # password: {{ .Values.password | b64enc }}
