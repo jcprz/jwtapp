@@ -77,25 +77,6 @@ func TestLoginUserAPI(t *testing.T) {
 	}
 }
 
-// func TestDeleteUserAPI(t *testing.T) {
-// 	clearTable()
-// 	createUser(1)
-
-// 	req, _ := http.NewRequest("GET", "/login", nil)
-// 	response := executeRequest(req)
-// 	checkResponseCode(t, http.StatusOK, response.Code)
-
-// 	req, _ = http.NewRequest("DELETE", "/delete", nil)
-// 	response = executeRequest(req)
-
-// 	checkResponseCode(t, http.StatusOK, response.Code)
-
-// 	req, _ = http.NewRequest("GET", "/delete", nil)
-// 	response = executeRequest(req)
-// 	checkResponseCode(t, http.StatusNotFound, response.Code)
-
-// }
-
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	log.Printf("Request URI: %s | Request Body: %s | Request Header: %s", req.URL, req.Body, req.Header)
 	rec := httptest.NewRecorder()
@@ -111,23 +92,7 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 	}
 }
 
-// func createUser(count int) {
-// 	if count < 1 {
-// 		count = 1
-// 	}
-// 	for i := 0; i < count; i++ {
-// 		a.DB.QueryRow("insert into users (email, password) values ($1, $2);", "test@email.com", "123456")
-// 	}
-// }
-
 func clearTable() {
 	a.DB.Exec("DELETE FROM users")
 	a.DB.Exec("ALTER SEQUENCE users RESTART WITH 1")
 }
-
-// const tableCreationQuery = `CREATE TABLE IF NOT EXISTS user_test
-// (
-// 	ID  SERIAL PRIMARY KEY,
-// 	EMAIL VARCHAR(50),
-// 	PASSWORD VARCHAR(100)
-// )`

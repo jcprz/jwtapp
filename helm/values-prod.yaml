@@ -1,0 +1,42 @@
+# Default values for ccpay-api.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+# Environment variables -- Don't include secrets (creds, tokens, etc)!
+# PORT must be distinct per env. dev = 02 , staging = 01, master = 00
+env:
+  APP_PORT: '9000'
+  DB_HOST: ''
+  DB_USER: 'prod-jwtapi'
+  DB_PORT: '5432'
+  DB_NAME: 'prod_DB'
+  REDIS_HOST: ''
+  REDIS_PORT: '6379'
+
+
+secrets:
+  DB_PASSWORD: ''
+  REDIS_PASSWORD: ''
+  SECRET: ''
+
+
+# App Service
+service:
+  type: ClusterIP
+  port: 9000
+
+
+# Setup access from outside of the K8S Cluster
+ingress:
+  hosts:
+    - host: prod.jwt.api.rocketops.io
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - hosts:
+        - prod.jwt.api.rocketops.io
+      # Change name of cert to staging or prod respectively!
+      secretName: jwtapi-prod-cert-prod

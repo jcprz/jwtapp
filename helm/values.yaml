@@ -1,0 +1,87 @@
+env:
+  REDIS_PORT: '6379'
+  DB_PORT: '5432'
+
+image:
+  repository: us.gcr.io/rocketops-io/jwtapp
+  tag: "<manually state GIT short HASH with --set>"
+  # IfNotPresent  \ Always
+  pullPolicy: Always
+  pullSecret:
+    enabled: false
+    imagePullSecrets: dcker-reg-secret
+
+
+nameOverride: ""
+fullnameOverride: ""
+
+healthChecks:
+  enabled: false
+  minReadySeconds: 10
+
+  # Startup Probe in gke 1.16.x are in ALPHA stage.. can't use yet
+  startupProbe:
+    enabled: false
+    exec:
+      command:
+      - cat
+      - /app/tmp/containerHealthy
+  #  Failed probes will prevent container from receiving HTTP traffic ( overloaded container )
+  readinessProbe:
+    enabled: false
+    httpGet:
+      path: "/healthz"
+      scheme: HTTP
+    initialDelaySeconds: 14
+    periodSeconds: 5
+    failureThreshold: 15
+
+  # Failed probes will cause a restart of the container ( deadlock detection )
+  livenessProbe:
+    enabled: false
+    httpGet:
+      path: "/healthz"
+      scheme: HTTP
+    initialDelaySeconds: 25
+    periodSeconds: 20
+    # 37 * 5 = 185 maximum waiting time for recovery of deadlock
+    failureThreshold: 30
+
+iapProxy:
+  enabled: false
+  # image: gcr.io/cloudsql-docker/gce-proxy:1.17
+  # command:
+  # - "/cloud_sql_proxy"
+  # - "-instances=tf-cc-dev-0x1:us-east1:cc-platform=tcp:3306"
+  # - "-credential_file=/secrets/service_account.json"
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 25M
+
+tolerations:
+ - effect: NoSchedule
+   key: dedicated
+   value: apps
+ - effect: NoExecute
+   key: dedicated
+   value: apps
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: nodeGroup
+          operator: In
+          values: 
+          - apps
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: jwt-api
+      topologyKey: kubernetes.io/hostname
+
+

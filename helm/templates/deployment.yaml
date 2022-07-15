@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jwt-api.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "jwt-api.name" . }}
+    helm.sh/chart: {{ include "jwt-api.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "jwt-api.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+      labels:
+        app.kubernetes.io/name: {{ include "jwt-api.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      imagePullSecrets:
+      - name: {{ .Values.image.pullSecret.imagePullSecrets }}
+      containers:
+        {{- if .Values.iapProxy.enabled }}
+        - name: cloud-sql-proxy
+          image: {{ .Values.iapProxy.image }}
+          {{- with .Values.iapProxy.command }}
+          command:
+          {{- range . }}
+            - {{ . | quote }}
+          {{- end }}
+          {{- end }}
+          securityContext:
+            runAsNonRoot: true
+          volumeMounts:
+          - name: sql-proxy-vol
+            mountPath: /secrets/
+            readOnly: true
+        {{- end }}
+        - name: {{ .Chart.Name }}
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.readOnlyfs }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.livenessProbe.httpGet.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.healthChecks.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.readinessProbe.httpGet.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.healthChecks.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.healthChecks.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-cnfmps
+            {{- if .Values.secrets }}
+            - secretRef:
+                name: {{ .Release.Name }}-scrts
+            {{- end }}
+        {{- if .Values.iapProxy.enabled }}
+      volumes:
+      - name: sql-proxy-vol
+        secret:
+          secretName: {{ .Release.Name }}-iapproxy
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

@@ -13,7 +13,7 @@ func init() {
 }
 
 func main() {
-	port := fmt.Sprintf(":%s", os.Getenv("PORT"))
+	port := fmt.Sprintf(":%s", os.Getenv("APP_PORT"))
 	a := App{}
 	a.Initialize()
 
