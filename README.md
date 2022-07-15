@@ -21,7 +21,7 @@ SECRET
 Most of them are self-explanatory so I'll skip to the less self-explanatory ones:\
 APP_PORT = the port that will listen on\
 DB_DIALECT = the dialect the app will talk (either "postgres" or "mysql", beware though that I only fully tested postgres\
-SECRET = this is needed for the token verification\
+SECRET = this is needed for the token verification
 
 
 #Recent changes:
