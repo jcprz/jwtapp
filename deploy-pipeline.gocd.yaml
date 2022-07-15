@@ -1,0 +1,33 @@
+format_version: 10
+pipelines:
+  deploy-pipeline:
+    group: My-Pipelines
+    label_template: ${COUNT}
+    lock_behavior: none
+    display_order: -1
+    materials:
+      git-68a7899:
+        git: https://github.com/jcprz/jwtapp
+        username: jcprz
+        shallow_clone: false
+        auto_update: true
+        branch: main
+        encrypted_password: AES:uhDEHexKCn/7W1T91lxvbQ==:ITD2CWngxoqkP0cZs14WlCCp1KD2RcVFUU0i+Hx4QYrDnMfy6D6g1ycty09a8USe
+    stages:
+    - test-and-report:
+        fetch_materials: true
+        keep_artifacts: false
+        clean_workspace: false
+        approval:
+          type: success
+          allow_only_on_success: false
+        jobs:
+          run-unit-tests:
+            timeout: 0
+            tasks:
+            - exec:
+                arguments:
+                - test
+                - -v
+                command: go
+                run_if: passed
