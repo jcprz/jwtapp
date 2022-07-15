@@ -24,7 +24,7 @@ DB_DIALECT = the dialect the app will talk (either "postgres" or "mysql", beware
 SECRET = this is needed for the token verification
 
 
-#Recent changes:
+# Recent changes:
 I included some basic unit tests so that the pipelines can have some more meaning, plus the abilty to talk with Redis for login cache. I tried to structure the logs on JSON using logrus so that ut made more sense to test some other nice tools such ELK etc, but it was taking me some time so I left that for upcoming changes.
 
 
