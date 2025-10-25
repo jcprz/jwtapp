@@ -14,7 +14,7 @@ pipelines:
         branch: main
         encrypted_password: AES:uhDEHexKCn/7W1T91lxvbQ==:ITD2CWngxoqkP0cZs14WlCCp1KD2RcVFUU0i+Hx4QYrDnMfy6D6g1ycty09a8USe
     stages:
-    - test-and-report:
+    - test:
         fetch_materials: true
         keep_artifacts: false
         clean_workspace: false
@@ -27,7 +27,42 @@ pipelines:
             tasks:
             - exec:
                 arguments:
-                - test
-                - -v
-                command: go
+                - ci-test
+                command: make
                 run_if: passed
+            artifacts:
+            - test:
+                source: coverage.out
+                destination: coverage
+          run-integration-tests:
+            timeout: 0
+            tasks:
+            - exec:
+                arguments:
+                - ci-test-integration
+                command: make
+                run_if: passed
+            artifacts:
+            - test:
+                source: coverage-integration.out
+                destination: coverage
+    - build:
+        fetch_materials: true
+        keep_artifacts: false
+        clean_workspace: false
+        approval:
+          type: success
+          allow_only_on_success: true
+        jobs:
+          build-app:
+            timeout: 0
+            tasks:
+            - exec:
+                arguments:
+                - build
+                command: make
+                run_if: passed
+            artifacts:
+            - build:
+                source: app
+                destination: bin
