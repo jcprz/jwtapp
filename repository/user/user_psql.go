@@ -3,6 +3,7 @@ package userRepository
 import (
 	"database/sql"
 	"log"
+	"strconv"
 
 	"github.com/go-redis/redis"
 	"github.com/jcprz/jwtapp/models"
@@ -19,7 +20,9 @@ func logFatal(err error) {
 func (u UserRepository) Signup(db *sql.DB, user models.User) models.User {
 	err := db.QueryRow("insert into users (email, password) values ($1, $2) RETURNING id;", user.Email, user.Password).Scan(&user.ID)
 
-	logFatal(err)
+	if err != nil {
+		log.Printf("Error creating user: %v", err)
+	}
 
 	user.Password = ""
 
@@ -41,11 +44,10 @@ func (u UserRepository) Login(db *sql.DB, redis *redis.Client, user models.User)
 
 		log.Printf("User %s found in the database\n", user.Email)
 
-		log.Println("Caching user on Redis")
-		// TODO: use HMset instead.
+		log.Println("Caching user on Redis (without password)")
+		// SECURITY FIX: Do NOT cache the password in Redis
 		redis.HSet(user.Email, "id", user.ID)
 		redis.HSet(user.Email, "email", user.Email)
-		redis.HSet(user.Email, "password", user.Password)
 
 		data, err := redis.HGetAll(user.Email).Result()
 
@@ -54,10 +56,25 @@ func (u UserRepository) Login(db *sql.DB, redis *redis.Client, user models.User)
 		return user, nil
 
 	}
-	user.Email = result["email"]
-	user.Password = result["password"]
 
-	log.Printf("Cache hit for email: %s.\n", user.Email)
+	// User found in cache, need to get password from database
+	log.Printf("Cache hit for email: %s. Fetching password from database.\n", user.Email)
+
+	// Get ID from cache
+	if idStr, ok := result["id"]; ok {
+		if id, err := strconv.Atoi(idStr); err == nil {
+			user.ID = id
+		}
+	}
+	user.Email = result["email"]
+
+	// Always fetch password from database (never cache it)
+	row := db.QueryRow("select password from users where email = $1;", user.Email)
+	err = row.Scan(&user.Password)
+
+	if err != nil {
+		return user, err
+	}
 
 	return user, nil
 }

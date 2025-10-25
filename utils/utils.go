@@ -5,8 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jcprz/jwtapp/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,17 +29,18 @@ func RespondWithError(w http.ResponseWriter, status int, message string) {
 }
 
 func GenerateToken(user models.User) (string, error) {
-	var err error
 	secret := os.Getenv("SECRET")
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": user.Email,
 		"iss":   "course",
+		"exp":   time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+		"iat":   time.Now().Unix(),
 	})
 
 	tokenStr, err := token.SignedString([]byte(secret))
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	return tokenStr, nil
