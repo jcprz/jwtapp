@@ -65,7 +65,9 @@ test-docker: test-docker-up
 	$(MAKE) test-docker-down
 
 # CI/CD test commands
-ci-test: test-unit
+ci-test:
+	@echo "Running CI unit tests with coverage..."
+	go test -v -coverprofile=coverage.out -covermode=atomic -short ./...
 
 ci-test-integration: test-docker-up
 	@echo "Running CI integration tests..."
