@@ -94,10 +94,6 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
-    - name: Set up test environment
-      run: |
-        cp .env.test .env
-
     - name: Run integration tests
       env:
         APP_PORT: 8080

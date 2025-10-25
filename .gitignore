@@ -22,6 +22,7 @@ coverage-integration.out
 .env
 .env.local
 .env.*.local
+!.env.test
 
 # IDE files
 .vscode/
