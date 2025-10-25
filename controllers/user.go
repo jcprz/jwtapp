@@ -13,7 +13,7 @@ import (
 	userRepository "github.com/jcprz/jwtapp/repository/user"
 	"github.com/jcprz/jwtapp/utils"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/go-redis/redis"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -33,24 +33,20 @@ func (c Controller) Signup(db *sql.DB) http.HandlerFunc {
 		if user.Password == "" {
 			utils.RespondWithError(w, http.StatusBadRequest, "Password is missing.")
 			return
-
 		}
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 10)
 
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error hashing password: %v", err)
+			utils.RespondWithError(w, http.StatusInternalServerError, "Server Error.")
+			return
 		}
 
 		user.Password = string(hash)
 
 		userRepo := userRepository.UserRepository{}
 		user = userRepo.Signup(db, user)
-
-		if err != nil {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Server Error.")
-			return
-		}
 
 		user.Password = ""
 		utils.ResponseJSON(w, http.StatusCreated, user)
@@ -68,10 +64,12 @@ func (c Controller) Login(db *sql.DB, redis *redis.Client) http.HandlerFunc {
 
 		if user.Email == "" {
 			utils.RespondWithError(w, http.StatusBadRequest, "Email is missing.")
+			return
 		}
 
 		if user.Password == "" {
 			utils.RespondWithError(w, http.StatusBadRequest, "Password is missing.")
+			return
 		}
 
 		password := user.Password
@@ -85,7 +83,9 @@ func (c Controller) Login(db *sql.DB, redis *redis.Client) http.HandlerFunc {
 		token, err := utils.GenerateToken(user)
 
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error generating token: %v", err)
+			utils.RespondWithError(w, http.StatusInternalServerError, "Error generating token.")
+			return
 		}
 
 		isValidPasswd := utils.ComparePasswords(hashedPassword, []byte(password))
@@ -97,7 +97,7 @@ func (c Controller) Login(db *sql.DB, redis *redis.Client) http.HandlerFunc {
 			utils.ResponseJSON(w, http.StatusOK, jwt)
 
 		} else {
-			utils.RespondWithError(w, http.StatusUnauthorized, "Invalid token.")
+			utils.RespondWithError(w, http.StatusUnauthorized, "Invalid credentials.")
 		}
 
 	}
@@ -113,6 +113,7 @@ func (c Controller) Delete(db *sql.DB, redis *redis.Client) http.HandlerFunc {
 
 		if user.Email == "" {
 			utils.RespondWithError(w, http.StatusBadRequest, "Email is missing.")
+			return
 		}
 
 		userRepo := userRepository.UserRepository{}
@@ -121,10 +122,8 @@ func (c Controller) Delete(db *sql.DB, redis *redis.Client) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
-			// log.Fatal(err)
 			utils.RespondWithError(w, http.StatusNotFound, "User not found")
 		} else {
-
 			utils.ResponseJSON(w, http.StatusOK, "User has been deleted")
 		}
 
@@ -137,36 +136,36 @@ func (c Controller) TokenVerifyMiddleware(next http.HandlerFunc) http.HandlerFun
 		bearerToken := r.Header.Get("Authorization")
 		var authHeader string
 
+		// Safely extract token from Bearer header
 		if bearerToken != "" {
-			authHeader = strings.Split(bearerToken, " ")[1]
+			parts := strings.Split(bearerToken, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				authHeader = parts[1]
+			}
 		}
 
-		if authHeader != "" {
-
+		if authHeader == "" {
+			utils.RespondWithError(w, http.StatusUnauthorized, "Missing or invalid Authorization header")
+			return
 		}
 
-		if len(authHeader) > 2 {
-			token, error := jwt.Parse(authHeader, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("There was an error")
-				}
-
-				return []byte(os.Getenv("SECRET")), nil
-			})
-
-			if error != nil {
-				utils.RespondWithError(w, http.StatusUnauthorized, error.Error())
-				return
+		token, err := jwt.Parse(authHeader, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
-			if token.Valid {
-				next.ServeHTTP(w, r)
-			} else {
-				utils.RespondWithError(w, http.StatusUnauthorized, error.Error())
-				return
-			}
+			return []byte(os.Getenv("SECRET")), nil
+		})
+
+		if err != nil {
+			utils.RespondWithError(w, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		if token.Valid {
+			next.ServeHTTP(w, r)
 		} else {
-			utils.RespondWithError(w, http.StatusUnauthorized, "Invalid Token")
+			utils.RespondWithError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 	})

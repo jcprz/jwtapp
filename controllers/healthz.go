@@ -8,6 +8,8 @@ import (
 
 func (c Controller) HealthZ() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		utils.ResponseJSON(w, http.StatusOK, "Ok")
+		utils.ResponseJSON(w, http.StatusOK, map[string]interface{}{
+			"alive": true,
+		})
 	}
 }
