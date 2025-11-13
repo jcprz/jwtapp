@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/jcprz/jwtapp/models"
@@ -154,7 +153,9 @@ func (c Controller) TokenVerifyMiddleware(next http.HandlerFunc) http.HandlerFun
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
-			return []byte(os.Getenv("SECRET")), nil
+			// Get JWT secret from Secrets Manager or environment variable
+			secret := utils.GetJWTSecretFromSecret()
+			return []byte(secret), nil
 		})
 
 		if err != nil {
