@@ -1,0 +1,197 @@
+name: Deploy to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Required for OIDC authentication
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+  CDK_DEFAULT_REGION: us-east-1
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: jwt-test-user
+          POSTGRES_PASSWORD: jwt-test-password
+          POSTGRES_DB: jwtapp-test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run unit tests
+      run: make ci-test
+
+    - name: Run integration tests
+      env:
+        APP_PORT: 8080
+        DB_HOST: localhost
+        DB_USER: jwt-test-user
+        DB_PASSWORD: jwt-test-password
+        DB_PORT: 5433
+        DB_NAME: jwtapp-test
+        DB_DIALECT: postgres
+        REDIS_HOST: localhost
+        REDIS_PORT: 6380
+        REDIS_PASSWORD: ""
+        SECRET: test-secret-key-for-jwt-signing
+      run: go test -v -tags=integration -coverprofile=coverage-integration.out ./...
+
+  deploy:
+    name: Deploy Infrastructure and Lambda
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials from OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-${{ github.run_id }}
+
+    - name: Verify AWS credentials
+      run: |
+        aws sts get-caller-identity
+        echo "AWS credentials configured successfully"
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Install AWS CDK CLI
+      run: npm install -g aws-cdk
+
+    - name: Install CDK dependencies
+      working-directory: cdk
+      run: go mod download
+
+    - name: CDK Bootstrap (if needed)
+      working-directory: cdk
+      run: |
+        # Check if CDK is already bootstrapped
+        if ! aws cloudformation describe-stacks --stack-name CDKToolkit --region ${{ env.AWS_REGION }} 2>/dev/null; then
+          echo "Bootstrapping CDK..."
+          cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }}
+        else
+          echo "CDK already bootstrapped"
+        fi
+
+    - name: CDK Synth
+      working-directory: cdk
+      run: cdk synth
+
+    - name: CDK Deploy
+      working-directory: cdk
+      run: cdk deploy --all --require-approval never
+
+    - name: Get Lambda Function URL
+      id: get-url
+      run: |
+        FUNCTION_URL=$(aws cloudformation describe-stacks \
+          --stack-name JwtAppStack \
+          --query 'Stacks[0].Outputs[?OutputKey==`FunctionUrl`].OutputValue' \
+          --output text \
+          --region ${{ env.AWS_REGION }})
+        echo "function_url=$FUNCTION_URL" >> $GITHUB_OUTPUT
+        echo "Lambda Function URL: $FUNCTION_URL"
+
+    - name: Health Check
+      run: |
+        echo "Waiting for Lambda to be ready..."
+        sleep 10
+
+        # Try to hit the health endpoint
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get-url.outputs.function_url }}healthz || echo "000")
+
+        if [ "$RESPONSE" = "200" ]; then
+          echo "✅ Health check passed! Lambda is responding."
+        else
+          echo "⚠️  Health check returned status: $RESPONSE"
+          echo "This might be expected if the database is still initializing."
+        fi
+
+    - name: Deploy Summary
+      run: |
+        echo "🚀 Deployment Complete!"
+        echo ""
+        echo "📊 Stack Outputs:"
+        aws cloudformation describe-stacks \
+          --stack-name JwtAppStack \
+          --query 'Stacks[0].Outputs' \
+          --region ${{ env.AWS_REGION }}
+        echo ""
+        echo "🔗 Lambda Function URL: ${{ steps.get-url.outputs.function_url }}"
+        echo ""
+        echo "📝 API Endpoints:"
+        echo "  - POST   ${{ steps.get-url.outputs.function_url }}signup"
+        echo "  - POST   ${{ steps.get-url.outputs.function_url }}login"
+        echo "  - DELETE ${{ steps.get-url.outputs.function_url }}delete"
+        echo "  - GET    ${{ steps.get-url.outputs.function_url }}protected"
+        echo "  - GET    ${{ steps.get-url.outputs.function_url }}healthz"

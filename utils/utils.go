@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -29,7 +28,8 @@ func RespondWithError(w http.ResponseWriter, status int, message string) {
 }
 
 func GenerateToken(user models.User) (string, error) {
-	secret := os.Getenv("SECRET")
+	// Get JWT secret from Secrets Manager or environment variable
+	secret := GetJWTSecretFromSecret()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": user.Email,

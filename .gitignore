@@ -30,3 +30,11 @@ coverage-integration.out
 *.swp
 *.swo
 *~
+
+# CDK
+cdk/cdk.out/
+cdk/.cdk.staging/
+cdk/cdk.context.json
+
+# Lambda bootstrap binary
+bootstrap

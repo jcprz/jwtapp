@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/jcprz/jwtapp/utils"
 )
 
 var db *sql.DB
@@ -12,14 +14,16 @@ var db *sql.DB
 func ConnectDB() *sql.DB {
 	dbHost := os.Getenv("DB_HOST")
 	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASSWORD")
 	dbPort := os.Getenv("DB_PORT")
 	dbName := os.Getenv("DB_NAME")
 	dbDialect := os.Getenv("DB_DIALECT")
 
+	// Get password from Secrets Manager or environment variable
+	dbPass := utils.GetDBPasswordFromSecret()
+
 	dbToStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbPass, dbName)
 
-	log.Printf("DB connection details: %s", dbToStr)
+	log.Printf("DB connection details: host=%s port=%s user=%s dbname=%s", dbHost, dbPort, dbUser, dbName)
 
 	db, _ = sql.Open(dbDialect, dbToStr)
 
